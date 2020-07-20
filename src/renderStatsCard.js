@@ -1,22 +1,11 @@
-const { kFormatter, fallbackColor } = require("../src/utils");
+const { kFormatter, getCardColors, FlexLayout } = require("../src/utils");
 const getStyles = require("./getStyles");
 const icons = require("./icons");
 
-const createTextNode = ({
-  icon,
-  label,
-  value,
-  id,
-  index,
-  lineHeight,
-  showIcons,
-}) => {
+const createTextNode = ({ icon, label, value, id, index, showIcons }) => {
   const kValue = kFormatter(value);
   const staggerDelay = (index + 3) * 150;
-  // manually calculating lineHeight based on index instead of using <tspan dy="" />
-  // to fix firefox layout bug
-  const lheight = lineHeight * (index + 1);
-  const translateY = lheight - lineHeight / 2;
+
   const labelOffset = showIcons ? `x="25"` : "";
   const iconSvg = showIcons
     ? `
@@ -26,7 +15,7 @@ const createTextNode = ({
   `
     : "";
   return `
-    <g class="stagger" style="animation-delay: ${staggerDelay}ms" transform="translate(25, ${translateY})">
+    <g class="stagger" style="animation-delay: ${staggerDelay}ms" transform="translate(25, 0)">
       ${iconSvg}
       <text class="stat bold" ${labelOffset} y="12.5">${label}:</text>
       <text class="stat" x="135" y="12.5" data-testid="${id}">${kValue}</text>
@@ -55,14 +44,19 @@ const renderStatsCard = (stats = {}, options = { hide: [] }) => {
     icon_color,
     text_color,
     bg_color,
+    theme = "default",
   } = options;
 
   const lheight = parseInt(line_height);
 
-  const titleColor = fallbackColor(title_color, "#2f80ed");
-  const iconColor = fallbackColor(icon_color, "#4c71f2");
-  const textColor = fallbackColor(text_color, "#333");
-  const bgColor = fallbackColor(bg_color, "#FFFEFE");
+  // returns theme based colors with proper overrides and defaults
+  const { titleColor, textColor, iconColor, bgColor } = getCardColors({
+    title_color,
+    icon_color,
+    text_color,
+    bg_color,
+    theme,
+  });
 
   // Meta data for creating text nodes with createTextNode function
   const STATS = {
@@ -106,7 +100,6 @@ const renderStatsCard = (stats = {}, options = { hide: [] }) => {
       createTextNode({
         ...STATS[key],
         index,
-        lineHeight: lheight,
         showIcons: show_icons,
       })
     );
@@ -131,15 +124,17 @@ const renderStatsCard = (stats = {}, options = { hide: [] }) => {
   });
 
   // Conditionally rendered elements
+
+  const apostrophe = ["x", "s"].includes(name.slice(-1)) ? "" : "s";
   const title = hide_title
     ? ""
-    : `<text x="25" y="35" class="header">${name}'s GitHub Stats</text>`;
+    : `<text x="25" y="35" class="header">${name}'${apostrophe} GitHub Stats</text>`;
 
   const border = hide_border
     ? ""
     : `
     <rect 
-      data-testid="card-border"
+      data-testid="card-bg"
       x="0.5"
       y="0.5"
       width="494"
@@ -157,16 +152,17 @@ const renderStatsCard = (stats = {}, options = { hide: [] }) => {
       })">
         <circle class="rank-circle-rim" cx="-10" cy="8" r="40" />
         <circle class="rank-circle" cx="-10" cy="8" r="40" />
-        <text
-          x="${rank.level.length === 1 ? "-4" : "0"}"
-          y="0"
-          alignment-baseline="central"
-          dominant-baseline="central"
-          text-anchor="middle"
-          class="rank-text"
-        >
-          ${rank.level}
-        </text>
+        <g class="rank-text">
+          <text
+            x="${rank.level.length === 1 ? "-4" : "0"}"
+            y="0"
+            alignment-baseline="central"
+            dominant-baseline="central"
+            text-anchor="middle"
+          >
+            ${rank.level}
+          </text>
+        </g>
       </g>`;
 
   if (hide_title) {
@@ -187,8 +183,12 @@ const renderStatsCard = (stats = {}, options = { hide: [] }) => {
       })">
         ${rankCircle}
 
-        <svg x="0" y="45">
-          ${statItems.toString().replace(/\,/gm, "")}
+        <svg x="0" y="55">
+          ${FlexLayout({
+            items: statItems,
+            gap: lheight,
+            direction: "column",
+          }).join("")}
         </svg>
       </g>
     </svg>

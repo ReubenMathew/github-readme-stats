@@ -7,6 +7,7 @@ const {
   queryByTestId,
   queryAllByTestId,
 } = require("@testing-library/dom");
+const themes = require("../themes");
 
 describe("Test renderStatsCard", () => {
   const stats = {
@@ -34,8 +35,22 @@ describe("Test renderStatsCard", () => {
     expect(getByTestId(document.body, "issues").textContent).toBe("300");
     expect(getByTestId(document.body, "prs").textContent).toBe("400");
     expect(getByTestId(document.body, "contribs").textContent).toBe("500");
-    expect(queryByTestId(document.body, "card-border")).toBeInTheDocument();
+    expect(queryByTestId(document.body, "card-bg")).toBeInTheDocument();
     expect(queryByTestId(document.body, "rank-circle")).toBeInTheDocument();
+  });
+
+  it("should have proper name apostrophe", () => {
+    document.body.innerHTML = renderStatsCard({ ...stats, name: "Anil Das" });
+
+    expect(document.getElementsByClassName("header")[0].textContent).toBe(
+      "Anil Das' GitHub Stats"
+    );
+
+    document.body.innerHTML = renderStatsCard({ ...stats, name: "Felix" });
+
+    expect(document.getElementsByClassName("header")[0].textContent).toBe(
+      "Felix' GitHub Stats"
+    );
   });
 
   it("should hide individual stats", () => {
@@ -57,7 +72,7 @@ describe("Test renderStatsCard", () => {
   it("should hide_border", () => {
     document.body.innerHTML = renderStatsCard(stats, { hide_border: true });
 
-    expect(queryByTestId(document.body, "card-border")).not.toBeInTheDocument();
+    expect(queryByTestId(document.body, "card-bg")).not.toBeInTheDocument();
   });
 
   it("should hide_rank", () => {
@@ -70,7 +85,6 @@ describe("Test renderStatsCard", () => {
     document.body.innerHTML = renderStatsCard(stats);
 
     const styleTag = document.querySelector("style");
-    console.log(styleTag.textContent);
     const stylesObject = cssToObject(styleTag.textContent);
 
     const headerClassStyles = stylesObject[".header"];
@@ -80,7 +94,7 @@ describe("Test renderStatsCard", () => {
     expect(headerClassStyles.fill).toBe("#2f80ed");
     expect(statClassStyles.fill).toBe("#333");
     expect(iconClassStyles.fill).toBe("#4c71f2");
-    expect(queryByTestId(document.body, "card-border")).toHaveAttribute(
+    expect(queryByTestId(document.body, "card-bg")).toHaveAttribute(
       "fill",
       "#FFFEFE"
     );
@@ -106,9 +120,54 @@ describe("Test renderStatsCard", () => {
     expect(headerClassStyles.fill).toBe(`#${customColors.title_color}`);
     expect(statClassStyles.fill).toBe(`#${customColors.text_color}`);
     expect(iconClassStyles.fill).toBe(`#${customColors.icon_color}`);
-    expect(queryByTestId(document.body, "card-border")).toHaveAttribute(
+    expect(queryByTestId(document.body, "card-bg")).toHaveAttribute(
       "fill",
       "#252525"
+    );
+  });
+
+  it("should render custom colors with themes", () => {
+    document.body.innerHTML = renderStatsCard(stats, {
+      title_color: "5a0",
+      theme: "radical",
+    });
+
+    const styleTag = document.querySelector("style");
+    const stylesObject = cssToObject(styleTag.innerHTML);
+
+    const headerClassStyles = stylesObject[".header"];
+    const statClassStyles = stylesObject[".stat"];
+    const iconClassStyles = stylesObject[".icon"];
+
+    expect(headerClassStyles.fill).toBe("#5a0");
+    expect(statClassStyles.fill).toBe(`#${themes.radical.text_color}`);
+    expect(iconClassStyles.fill).toBe(`#${themes.radical.icon_color}`);
+    expect(queryByTestId(document.body, "card-bg")).toHaveAttribute(
+      "fill",
+      `#${themes.radical.bg_color}`
+    );
+  });
+
+  it("should render custom colors with themes and fallback to default colors if invalid", () => {
+    document.body.innerHTML = renderStatsCard(stats, {
+      title_color: "invalid color",
+      text_color: "invalid color",
+      theme: "radical",
+    });
+
+    const styleTag = document.querySelector("style");
+    const stylesObject = cssToObject(styleTag.innerHTML);
+
+    const headerClassStyles = stylesObject[".header"];
+    const statClassStyles = stylesObject[".stat"];
+    const iconClassStyles = stylesObject[".icon"];
+
+    expect(headerClassStyles.fill).toBe(`#${themes.default.title_color}`);
+    expect(statClassStyles.fill).toBe(`#${themes.default.text_color}`);
+    expect(iconClassStyles.fill).toBe(`#${themes.radical.icon_color}`);
+    expect(queryByTestId(document.body, "card-bg")).toHaveAttribute(
+      "fill",
+      `#${themes.radical.bg_color}`
     );
   });
 
@@ -157,7 +216,6 @@ describe("Test renderStatsCard", () => {
   it("should not have icons if show_icons is false", () => {
     document.body.innerHTML = renderStatsCard(stats, { show_icons: false });
 
-    console.log(queryAllByTestId(document.body, "icon"));
     expect(queryAllByTestId(document.body, "icon")[0]).not.toBeDefined();
     expect(queryByTestId(document.body, "stars")).toBeDefined();
     expect(
